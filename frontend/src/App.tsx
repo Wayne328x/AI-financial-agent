@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './App.css'
 import FileUpload from './components/FileUpload'
 import Chat from './components/Chat'
 
