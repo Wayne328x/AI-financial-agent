@@ -1,17 +1,16 @@
-import openai
+import cohere
 from typing import List
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+cohere_client = cohere.Client(api_key=os.getenv("COHERE_API_KEY"))
 
 def generate_embeddings(texts: List[str]) -> List[List[float]]:
-    """Generate embeddings for a list of texts using OpenAI."""
-    response = openai.Embedding.create(
-        input=texts,
-        model="text-embedding-ada-002"
+    """Generate embeddings for a list of texts using Cohere."""
+    response = cohere_client.embed(
+        texts=texts,
+        model="embed-english-v3.0"
     )
-    embeddings = [data['embedding'] for data in response['data']]
-    return embeddings
+    return response.embeddings

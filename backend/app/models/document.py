@@ -21,6 +21,6 @@ class DocumentChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"))
     content = Column(Text)
-    embedding = Column(Vector(1536))  # OpenAI ada-002 dimension
+    embedding = Column(Vector(1024))  # Cohere embed-english-v3.0 dimension
 
     document = relationship("Document", back_populates="chunks")
