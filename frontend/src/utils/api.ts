@@ -78,7 +78,7 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
  */
 export const checkHealth = async (): Promise<boolean> => {
   try {
-    const response = await apiClient.get('/');
+    const response = await apiClient.get('/health');
     return response.status === 200;
   } catch {
     return false;

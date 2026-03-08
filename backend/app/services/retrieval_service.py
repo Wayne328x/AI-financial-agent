@@ -13,7 +13,7 @@ def cosine_similarity(a, b):
 def search_similar_chunks(query: str, db: Session, top_k: int = 5) -> List[Tuple[str, float]]:
     """Search for similar document chunks using vector similarity."""
     # Generate embedding for the query
-    query_embedding = generate_embeddings([query])[0]
+    query_embedding = generate_embeddings([query], input_type="search_query")[0]
 
     # Get all chunks from database
     results = db.execute(text("SELECT id, content, embedding FROM document_chunks")).fetchall()

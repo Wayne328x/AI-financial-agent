@@ -21,6 +21,10 @@ app.add_middleware(
 app.include_router(upload.router, prefix="/api/v1", tags=["upload"])
 app.include_router(query.router, prefix="/api/v1", tags=["query"])
 
+@app.get("/api/v1/health")
+async def health_check():
+    return {"status": "healthy", "message": "AI Financial Research Assistant API is running"}
+
 @app.get("/")
 async def root():
     return {"message": "AI Financial Research Assistant API"}
