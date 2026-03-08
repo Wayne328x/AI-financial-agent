@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.sqlite import JSON
 from ..database import Base
+import json
 
 class Document(Base):
     __tablename__ = "documents"
@@ -21,6 +22,6 @@ class DocumentChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"))
     content = Column(Text)
-    embedding = Column(Vector(1024))  # Cohere embed-english-v3.0 dimension
+    embedding = Column(JSON)  # Store embeddings as JSON for SQLite compatibility
 
     document = relationship("Document", back_populates="chunks")
