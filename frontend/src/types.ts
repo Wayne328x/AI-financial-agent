@@ -1,8 +1,14 @@
+export interface MessageSource {
+  content: string;
+  similarity?: number;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  sources?: MessageSource[];
 }
 
 export interface FileMetadata {

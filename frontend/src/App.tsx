@@ -14,6 +14,8 @@ import {
 import { sendQuery, uploadFile } from './utils/api';
 import './App.css';
 
+const COMPANY_IDENTIFICATION_QUERY_PATTERN = /\b(company name|what company|which company|who is this report for|who is this filing for|identify (the )?company|name of the company|what is the company)\b/i;
+
 const deriveTitleFromFilename = (filename: string): string => {
   const baseName = filename.replace(/\.[^.]+$/, '');
   const parts = baseName
@@ -46,6 +48,104 @@ const deriveTitleFromFilename = (filename: string): string => {
 
   const fallback = candidate || parts[0] || 'New Chat';
   return fallback.charAt(0).toUpperCase() + fallback.slice(1).toLowerCase();
+};
+
+const cleanCompanyTitle = (value: string): string => {
+  let cleaned = value
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+    .replace(/(?<!_)_([^_]+)_(?!_)/g, '$1')
+    .replace(/^['"“”‘’()\[\]\s]+|['"“”‘’()\[\]\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  cleaned = cleaned.replace(/^[^A-Za-z0-9]+/, '').trim();
+  cleaned = cleaned.replace(/[,:;!?]+$/, '').trim();
+
+  return cleaned;
+};
+
+const isLikelyCompanyName = (value: string): boolean => {
+  const trimmed = cleanCompanyTitle(value);
+  if (!trimmed || trimmed.length < 2 || trimmed.length > 80) {
+    return false;
+  }
+
+  if (!/[A-Za-z]/.test(trimmed)) {
+    return false;
+  }
+
+  if (/\b(context|document|report|filing|question|answer|provided)\b/i.test(trimmed)) {
+    return false;
+  }
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length > 6) {
+    return false;
+  }
+
+  return true;
+};
+
+const extractCompanyNameFromAnswer = (answer: string): string | null => {
+  const normalized = cleanCompanyTitle(answer);
+  if (!normalized) {
+    return null;
+  }
+
+  const firstLine = normalized.split(/\n+/)[0].trim();
+  const directPatterns = [
+    /(?:the company is|company is|this report is about|the report is about|this filing is for|the filing is for|the document is about|this document is about|report is for)\s+([^.!?\n]+)/i,
+    /(?:about|for)\s+([A-Z][A-Za-z0-9&.,'\- ]{1,80})$/i,
+  ];
+
+  for (const pattern of directPatterns) {
+    const match = firstLine.match(pattern);
+    const candidate = match?.[1] ? cleanCompanyTitle(match[1]) : '';
+    if (isLikelyCompanyName(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (isLikelyCompanyName(firstLine)) {
+    return firstLine;
+  }
+
+  return null;
+};
+
+const shouldAdoptCompanyTitle = (session: ChatSession, nextTitle: string): boolean => {
+  const latestFilename = session.uploadedFiles[session.uploadedFiles.length - 1]?.name;
+  const filenameTitle = latestFilename ? deriveTitleFromFilename(latestFilename) : null;
+  const cleanedNextTitle = cleanCompanyTitle(nextTitle);
+  const cleanedCurrentTitle = cleanCompanyTitle(session.title);
+
+  if (!cleanedNextTitle || cleanedCurrentTitle === cleanedNextTitle) {
+    return false;
+  }
+
+  return cleanedCurrentTitle === 'New Chat' || (filenameTitle !== null && cleanedCurrentTitle === cleanCompanyTitle(filenameTitle));
+};
+
+const maybeApplyCompanyTitle = (
+  sessions: ChatSession[],
+  sessionId: string,
+  companyName: string | null,
+): ChatSession[] => {
+  const nextTitle = companyName ? cleanCompanyTitle(companyName) : '';
+  if (!nextTitle) {
+    return sessions;
+  }
+
+  const session = sessions.find(item => item.id === sessionId);
+  if (!session || !shouldAdoptCompanyTitle(session, nextTitle)) {
+    return sessions;
+  }
+
+  return updateSessionTitle(sessions, sessionId, nextTitle);
 };
 
 const resolveActiveDocumentId = (session: ChatSession | undefined): number | null => {
@@ -184,9 +284,10 @@ const App: React.FC = () => {
       const file = files[0];
       const uploadResponse = await uploadFile(file);
       const documentId = uploadResponse.document_id > 0 ? uploadResponse.document_id : undefined;
+      const detectedCompanyName = uploadResponse.company_name ? cleanCompanyTitle(uploadResponse.company_name) : '';
 
-      const nextTitle = (uploadResponse.company_name && uploadResponse.company_name.trim())
-        ? uploadResponse.company_name.trim()
+      const nextTitle = detectedCompanyName
+        ? detectedCompanyName
         : deriveTitleFromFilename(uploadResponse.filename || file.name);
 
       const sessionsWithFile = addFileToSession(state.sessions, state.currentSessionId!, file, documentId);
@@ -249,11 +350,15 @@ const App: React.FC = () => {
         documentId: activeDocumentId,
         chatId: state.currentSessionId,
       });
+      const companyNameFromAnswer = COMPANY_IDENTIFICATION_QUERY_PATTERN.test(message)
+        ? extractCompanyNameFromAnswer(response.response)
+        : null;
 
       // Add AI response
       const aiMessage: Omit<Message, 'id' | 'timestamp'> = {
         role: 'assistant',
-        content: response.response
+        content: response.response,
+        sources: response.sources
       };
 
       const sessionsWithAI = addMessageToSession(
@@ -261,10 +366,15 @@ const App: React.FC = () => {
         state.currentSessionId,
         aiMessage
       );
+      const sessionsWithCompanyTitle = maybeApplyCompanyTitle(
+        sessionsWithAI,
+        state.currentSessionId,
+        companyNameFromAnswer,
+      );
 
       setState(prev => ({
         ...prev,
-        sessions: sessionsWithAI,
+        sessions: sessionsWithCompanyTitle,
         isLoading: false
       }));
     } catch (error) {
