@@ -11,7 +11,7 @@ app = FastAPI(title="AI Financial Research Assistant", version="1.0.0")
 # CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
