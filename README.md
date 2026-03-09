@@ -39,11 +39,11 @@ A full-stack RAG application that lets users upload financial reports and ask gr
 ```mermaid
 flowchart LR
     A[React Frontend] --> B[FastAPI Backend]
-    B --> C[PDF Text Extraction]
+    B --> C[PDF Upload & Text Extraction]
     C --> D[Chunking]
     D --> E[Embedding Service]
-    E --> F[Vector Store / Retrieval]
-    F --> G[Gemini Generation]
+    E --> F[Vector Retrieval]
+    F --> G[Gemini Answer Generation]
     G --> B
     B --> A
 
