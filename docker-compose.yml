@@ -19,7 +19,6 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/financial_db
-      COHERE_API_KEY: ${COHERE_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
       - "8000:8000"
