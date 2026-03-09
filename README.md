@@ -47,7 +47,7 @@ flowchart LR
     G --> B
     B --> A
 
-    ## Setup
+## Setup
 
 ### Backend
 ```bash
