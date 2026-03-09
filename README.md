@@ -1,110 +1,97 @@
-# AI Financial Agent
+# AI Financial Research Assistant
 
-A comprehensive AI-powered financial research chat application with document upload and retrieval capabilities.
+A full-stack RAG application that lets users upload financial reports and ask grounded questions using document retrieval and Gemini-based answer generation.
+
+## Demo
+
+### Before and After Upload
+![Before Upload screen](./demo/beforeupload.png)
+![After Upload screen](./demo/afterupload.png)
+
+### Grounded chat response
+![Chat response](./demo/chat-display.png)
+
+### Chat renamed by detected company
+![Chat rename](./demo/chatrename.png)
 
 ## Features
 
-- **Chat Interface**: Interactive chat with AI for financial research
-- **Document Upload**: Upload PDF documents for analysis
-- **Persistent Chat Sessions**: Save and manage multiple chat conversations
-- **Local Storage**: Chat history persists in browser localStorage
-- **FastAPI Backend**: Robust backend with vector similarity search
-- **SQLite Database**: Easy development setup with SQLite, production-ready for PostgreSQL
+- Upload SEC filings and financial reports in PDF format
+- Extract, chunk, and embed document content
+- Retrieve relevant sections using vector similarity
+- Generate grounded answers with Gemini
+- Persist chat history across sessions
+- Rename chats based on detected company names
+- Display retrieved source snippets with answers
 
-## Tech Stack
+## How It Works
 
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: FastAPI + SQLAlchemy
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **AI**: Cohere API for embeddings and responses
-- **Styling**: CSS with modern responsive design
+1. The user uploads a financial report in PDF format.
+2. The backend extracts text and splits it into chunks.
+3. Each chunk is converted into an embedding vector and stored for retrieval.
+4. When the user asks a question, the query is embedded using the same embedding service.
+5. The system retrieves the most relevant document chunks.
+6. Retrieved context is passed to Gemini for grounded answer generation.
+7. The frontend displays the answer and relevant source snippets.
 
-## Setup Instructions
+## Architecture
 
-### Prerequisites
+```mermaid
+flowchart LR
+    A[React Frontend] --> B[FastAPI Backend]
+    B --> C[PDF Text Extraction]
+    C --> D[Chunking]
+    D --> E[Embedding Service]
+    E --> F[Vector Store / Retrieval]
+    F --> G[Gemini Generation]
+    G --> B
+    B --> A
 
-- Python 3.8+
-- Node.js 16+
-- Git
+    ## Setup
 
-### Backend Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Wayne328x/AI-financial-agent.git
-   cd AI-financial-agent
-   ```
-
-2. **Set up Python environment**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp ../.env.example ../.env
-   # Edit .env with your API keys
-   ```
-
-4. **Run the backend**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-### Frontend Setup
-
-1. **Install dependencies**
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-3. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-## API Endpoints
-
-- `GET /api/v1/health` - Health check
-- `POST /api/v1/upload` - Upload documents
-- `POST /api/v1/query` - Query the AI with context
-
-## Development
-
-### Database Migration
-
-The application automatically creates SQLite database tables on startup. For production with PostgreSQL:
-
-1. Install PostgreSQL and create a database
-2. Update `DATABASE_URL` in `.env`
-3. The application will use pgvector for optimized vector search
-
-### Adding New Features
-
-- Backend: Add new routers in `app/routers/`
-- Frontend: Add new components in `src/components/`
-- Database: Update models in `app/models/`
-
-## Deployment
-
-### Backend Deployment
-
+### Backend
 ```bash
-# Using Docker
-docker build -t ai-financial-agent .
-docker run -p 8000:8000 ai-financial-agent
-```
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-### Frontend Deployment
+GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
 
-```bash
-npm run build
-# Deploy the dist/ folder to your web server
-```
+PYTHONPATH=. uvicorn app.main:app --reload --port 8000
+
+cd frontend
+npm install
+npm run dev
+
+Make sure the commands actually match your repo.
+
+---
+
+## 8. Example usage
+This is underrated. It helps people understand what the app does.
+
+```md
+## Example Questions
+
+- What company is this report about?
+- What reporting period does this Form 10-Q cover?
+- Where is the company headquartered?
+- What risks are mentioned in the report?
+- Summarize the main financial highlights.
+
+## Limitations
+
+- Current retrieval quality depends on the local embedding backend
+- The system is optimized for single-document chat sessions
+- Financial metric extraction is not yet structured into tables
+- Source citations are currently snippet-based rather than page-anchored
+
+## Future Improvements
+
+- Support multi-document comparison across multiple filings
+- Upgrade embeddings to a stronger sentence-transformer backend
+- Add page-level citations and source highlighting
+- Extract structured financial metrics such as revenue and EPS
+- Add persistent document storage and chat-level document linking
