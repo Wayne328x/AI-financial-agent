@@ -14,6 +14,59 @@ import {
 import { sendQuery, uploadFile } from './utils/api';
 import './App.css';
 
+const deriveTitleFromFilename = (filename: string): string => {
+  const baseName = filename.replace(/\.[^.]+$/, '');
+  const parts = baseName
+    .split(/[_\-\s]+/)
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  const ignoredTokens = new Set([
+    '10k',
+    '10q',
+    '8k',
+    'annual',
+    'report',
+    'quarterly',
+    'financial',
+    'statement',
+    'statements',
+    'sec',
+    'fy',
+    'q1',
+    'q2',
+    'q3',
+    'q4'
+  ]);
+
+  const candidate = parts.find(part => {
+    const normalized = part.toLowerCase();
+    return /[a-zA-Z]/.test(part) && !ignoredTokens.has(normalized) && !/^\d+$/.test(part);
+  });
+
+  const fallback = candidate || parts[0] || 'New Chat';
+  return fallback.charAt(0).toUpperCase() + fallback.slice(1).toLowerCase();
+};
+
+const resolveActiveDocumentId = (session: ChatSession | undefined): number | null => {
+  if (!session) {
+    return null;
+  }
+
+  if (typeof session.activeDocumentId === 'number' && session.activeDocumentId > 0) {
+    return session.activeDocumentId;
+  }
+
+  for (let index = session.uploadedFiles.length - 1; index >= 0; index -= 1) {
+    const documentId = session.uploadedFiles[index]?.documentId;
+    if (typeof documentId === 'number' && documentId > 0) {
+      return documentId;
+    }
+  }
+
+  return null;
+};
+
 const App: React.FC = () => {
   const [state, setState] = useState<ChatState>({
     sessions: [],
@@ -29,11 +82,29 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!localStorageAvailable) {
       console.warn('localStorage is not available. Chat sessions will not be persisted.');
+      const defaultSession = createNewSession();
+      setState(prev => ({
+        ...prev,
+        sessions: [defaultSession],
+        currentSessionId: defaultSession.id,
+        success: null
+      }));
       return;
     }
 
     const loadedSessions = loadSessionsFromStorage();
     const savedCurrentSessionId = loadCurrentSessionIdFromStorage();
+
+    if (loadedSessions.length === 0) {
+      const defaultSession = createNewSession();
+      setState(prev => ({
+        ...prev,
+        sessions: [defaultSession],
+        currentSessionId: defaultSession.id,
+        success: null
+      }));
+      return;
+    }
 
     // Validate that the saved current session still exists
     const validCurrentSessionId = savedCurrentSessionId &&
@@ -111,9 +182,15 @@ const App: React.FC = () => {
     try {
       // Upload the first file (can be extended for multiple files)
       const file = files[0];
-      await uploadFile(file);
+      const uploadResponse = await uploadFile(file);
+      const documentId = uploadResponse.document_id > 0 ? uploadResponse.document_id : undefined;
 
-      const updatedSessions = addFileToSession(state.sessions, state.currentSessionId!, file);
+      const nextTitle = (uploadResponse.company_name && uploadResponse.company_name.trim())
+        ? uploadResponse.company_name.trim()
+        : deriveTitleFromFilename(uploadResponse.filename || file.name);
+
+      const sessionsWithFile = addFileToSession(state.sessions, state.currentSessionId!, file, documentId);
+      const updatedSessions = updateSessionTitle(sessionsWithFile, state.currentSessionId, nextTitle);
       setState(prev => ({
         ...prev,
         sessions: updatedSessions,
@@ -139,6 +216,7 @@ const App: React.FC = () => {
     // Get current session to check if we need to update title
     const currentSession = state.sessions.find(s => s.id === state.currentSessionId);
     if (!currentSession) return;
+    const activeDocumentId = resolveActiveDocumentId(currentSession);
 
     // Add user message immediately
     const sessionsWithUserMessage = addMessageToSession(
@@ -167,7 +245,10 @@ const App: React.FC = () => {
 
     try {
       // Call backend API
-      const response = await sendQuery(message);
+      const response = await sendQuery(message, {
+        documentId: activeDocumentId,
+        chatId: state.currentSessionId,
+      });
 
       // Add AI response
       const aiMessage: Omit<Message, 'id' | 'timestamp'> = {

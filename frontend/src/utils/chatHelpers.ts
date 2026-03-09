@@ -52,7 +52,8 @@ export const createNewSession = (title?: string): ChatSession => {
     createdAt: now,
     updatedAt: now,
     messages: [],
-    uploadedFiles: []
+    uploadedFiles: [],
+    activeDocumentId: null
   };
 };
 
@@ -82,7 +83,8 @@ export const addMessageToSession = (
 export const addFileToSession = (
   sessions: ChatSession[],
   sessionId: string,
-  file: File
+  file: File,
+  documentId?: number
 ): ChatSession[] => {
   const now = new Date();
   const fileMetadata: FileMetadata = {
@@ -90,7 +92,8 @@ export const addFileToSession = (
     name: file.name,
     size: file.size,
     type: file.type,
-    uploadedAt: now
+    uploadedAt: now,
+    documentId
   };
 
   return sessions.map(session =>
@@ -98,6 +101,7 @@ export const addFileToSession = (
       ? {
           ...session,
           uploadedFiles: [...session.uploadedFiles, fileMetadata],
+          activeDocumentId: typeof documentId === 'number' ? documentId : (session.activeDocumentId ?? null),
           updatedAt: now
         }
       : session

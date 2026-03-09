@@ -11,6 +11,7 @@ export interface FileMetadata {
   size: number;
   type: string;
   uploadedAt: Date;
+  documentId?: number;
 }
 
 export interface ChatSession {
@@ -20,6 +21,7 @@ export interface ChatSession {
   updatedAt: Date;
   messages: Message[];
   uploadedFiles: FileMetadata[];
+  activeDocumentId: number | null;
 }
 
 // Utility types for state management

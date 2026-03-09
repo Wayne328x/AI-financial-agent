@@ -45,6 +45,7 @@ export const loadSessionsFromStorage = (): ChatSession[] => {
       Array.isArray(session.uploadedFiles)
     ).map((session: any) => ({
       ...session,
+      activeDocumentId: typeof session.activeDocumentId === 'number' ? session.activeDocumentId : null,
       createdAt: session.createdAt instanceof Date ? session.createdAt : new Date(session.createdAt),
       updatedAt: session.updatedAt instanceof Date ? session.updatedAt : new Date(session.updatedAt),
       messages: session.messages.map((message: any) => ({
@@ -53,6 +54,7 @@ export const loadSessionsFromStorage = (): ChatSession[] => {
       })),
       uploadedFiles: session.uploadedFiles.map((file: any) => ({
         ...file,
+        documentId: typeof file.documentId === 'number' ? file.documentId : undefined,
         uploadedAt: file.uploadedAt instanceof Date ? file.uploadedAt : new Date(file.uploadedAt)
       }))
     }));

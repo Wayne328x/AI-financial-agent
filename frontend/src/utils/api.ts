@@ -16,11 +16,54 @@ export interface QueryResponse {
 export interface UploadResponse {
   message: string;
   document_id: number;
+  company_name?: string;
+  filename?: string;
 }
 
 export interface ApiError {
-  detail: string;
+  detail: string | Array<{ msg?: string; loc?: Array<string | number> }>;
 }
+
+export interface QueryRequestOptions {
+  documentId?: number | null;
+  chatId?: string | null;
+}
+
+const getApiErrorMessage = (errorData: unknown): string => {
+  if (!errorData) {
+    return 'Unknown API error';
+  }
+
+  if (typeof errorData === 'string') {
+    return errorData;
+  }
+
+  if (typeof errorData === 'object') {
+    const payload = errorData as Record<string, unknown>;
+    const detail = payload.detail;
+
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+
+    if (Array.isArray(detail) && detail.length > 0) {
+      const firstIssue = detail[0] as Record<string, unknown>;
+      if (typeof firstIssue?.msg === 'string' && firstIssue.msg.trim()) {
+        return firstIssue.msg;
+      }
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error;
+    }
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message;
+    }
+  }
+
+  return 'Unknown API error';
+};
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -36,16 +79,24 @@ const apiClient = axios.create({
 /**
  * Send a query to the backend and get AI response
  */
-export const sendQuery = async (query: string): Promise<QueryResponse> => {
+export const sendQuery = async (query: string, options: QueryRequestOptions = {}): Promise<QueryResponse> => {
   try {
-    const response: AxiosResponse<QueryResponse> = await apiClient.post('/query', {
-      query: query.trim()
+    const body = new URLSearchParams({ query: query.trim() });
+    if (typeof options.documentId === 'number' && options.documentId > 0) {
+      body.set('document_id', String(options.documentId));
+    }
+    if (options.chatId) {
+      body.set('chat_id', options.chatId);
+    }
+    const response: AxiosResponse<QueryResponse> = await apiClient.post('/query', body, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
     });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      const apiError: ApiError = error.response?.data || { detail: 'Unknown API error' };
-      throw new Error(apiError.detail);
+      throw new Error(getApiErrorMessage(error.response?.data));
     }
     throw new Error('Network error occurred');
   }
@@ -89,6 +140,8 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
       return {
         message: typeof payload.message === 'string' ? payload.message : 'Upload completed',
         document_id: typeof payload.document_id === 'number' ? payload.document_id : 0,
+        company_name: typeof payload.company_name === 'string' ? payload.company_name : undefined,
+        filename: typeof payload.filename === 'string' ? payload.filename : undefined,
       };
     }
 
