@@ -46,7 +46,7 @@ flowchart LR
     F --> G[Gemini Answer Generation]
     G --> B
     B --> A
-
+```
 ## Setup
 
 ### Backend
