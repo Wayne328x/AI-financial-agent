@@ -23,14 +23,15 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
     formData.append('file', file)
 
     try {
-      await axios.post('/api/v1/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      await axios.post('http://localhost:8000/api/v1/upload', formData)
       onUpload()
     } catch (error) {
-      console.error('Upload failed', error)
+      console.error('Upload failed', {
+        endpoint: 'http://localhost:8000/api/v1/upload',
+        fileName: file.name,
+        fileSize: file.size,
+        error
+      })
       alert('Upload failed')
     } finally {
       setUploading(false)

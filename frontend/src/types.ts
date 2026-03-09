@@ -28,4 +28,5 @@ export interface ChatState {
   currentSessionId: string | null;
   isLoading: boolean;
   error: string | null;
+  success: string | null;
 }

@@ -9,6 +9,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isFileUploaded,
   isLoading,
   error,
+  success,
   onFileUpload,
   onSendMessage
 }) => {
@@ -19,6 +20,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onUpload={onFileUpload}
           isLoading={isLoading}
           error={error}
+          success={success}
         />
       )}
       {currentSession && (

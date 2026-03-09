@@ -1,7 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const UPLOAD_URL = 'http://localhost:8000/api/v1/upload';
 
 // Types for API responses
 export interface QueryResponse {
@@ -58,18 +59,54 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response: AxiosResponse<UploadResponse> = await apiClient.post('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    const response = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      body: formData,
     });
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const apiError: ApiError = error.response?.data || { detail: 'Unknown upload error' };
-      throw new Error(apiError.detail);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    throw new Error('File upload failed');
+
+    let data: unknown = null;
+    try {
+      data = await response.json();
+    } catch {
+      // Some backends may return empty/non-JSON body even for successful uploads.
+      return { message: 'Upload completed', document_id: 0 };
+    }
+
+    if (data && typeof data === 'object') {
+      const payload = data as Record<string, unknown>;
+      if (typeof payload.detail === 'string' && payload.detail.trim()) {
+        throw new Error(payload.detail);
+      }
+      if (typeof payload.error === 'string' && payload.error.trim()) {
+        throw new Error(payload.error);
+      }
+
+      return {
+        message: typeof payload.message === 'string' ? payload.message : 'Upload completed',
+        document_id: typeof payload.document_id === 'number' ? payload.document_id : 0,
+      };
+    }
+
+    return { message: 'Upload completed', document_id: 0 };
+  } catch (error) {
+    const isNetworkFailure = error instanceof TypeError;
+    console.error('Upload request failed:', {
+      endpoint: UPLOAD_URL,
+      fileName: file.name,
+      fileSize: file.size,
+      networkFailure: isNetworkFailure,
+      error,
+    });
+    if (error instanceof Error) {
+      console.log('Upload error message:', error.message);
+      throw error;
+    }
+    throw new Error('Network error during file upload');
   }
 };
 

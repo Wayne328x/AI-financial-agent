@@ -43,7 +43,19 @@ export const loadSessionsFromStorage = (): ChatSession[] => {
       session.title &&
       Array.isArray(session.messages) &&
       Array.isArray(session.uploadedFiles)
-    );
+    ).map((session: any) => ({
+      ...session,
+      createdAt: session.createdAt instanceof Date ? session.createdAt : new Date(session.createdAt),
+      updatedAt: session.updatedAt instanceof Date ? session.updatedAt : new Date(session.updatedAt),
+      messages: session.messages.map((message: any) => ({
+        ...message,
+        timestamp: message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp)
+      })),
+      uploadedFiles: session.uploadedFiles.map((file: any) => ({
+        ...file,
+        uploadedAt: file.uploadedAt instanceof Date ? file.uploadedAt : new Date(file.uploadedAt)
+      }))
+    }));
   } catch (error) {
     console.error('Failed to load sessions from localStorage:', error);
     return [];
@@ -73,7 +85,7 @@ export const loadCurrentSessionIdFromStorage = (): string | null => {
 };
 
 // Debounced save function to avoid excessive localStorage writes
-let saveTimeout: NodeJS.Timeout | null = null;
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 export const debouncedSaveSessions = (sessions: ChatSession[], delay: number = 500): void => {
   if (saveTimeout) {
     clearTimeout(saveTimeout);
@@ -107,5 +119,5 @@ export const isLocalStorageAvailable = (): boolean => {
 };
 
 export const clearSessionsFromStorage = (): void => {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(SESSIONS_STORAGE_KEY);
 };

@@ -19,6 +19,7 @@ export interface ChatWindowProps {
   isFileUploaded: boolean;
   isLoading: boolean;
   error: string | null;
+  success: string | null;
   onFileUpload: (files: File[]) => void;
   onSendMessage: (message: string) => void;
 }
@@ -43,4 +44,5 @@ export interface FileUploadPanelProps {
   onUpload: (files: File[]) => void;
   isLoading: boolean;
   error: string | null;
+  success: string | null;
 }

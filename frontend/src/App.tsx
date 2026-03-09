@@ -19,15 +19,8 @@ const App: React.FC = () => {
     sessions: [],
     currentSessionId: null,
     isLoading: false,
-    error: null
-  });
-
-const App: React.FC = () => {
-  const [state, setState] = useState<ChatState>({
-    sessions: [],
-    currentSessionId: null,
-    isLoading: false,
-    error: null
+    error: null,
+    success: null
   });
 
   const [localStorageAvailable] = useState(() => isLocalStorageAvailable());
@@ -51,7 +44,8 @@ const App: React.FC = () => {
     setState(prev => ({
       ...prev,
       sessions: loadedSessions,
-      currentSessionId: validCurrentSessionId
+      currentSessionId: validCurrentSessionId,
+      success: null
     }));
   }, [localStorageAvailable]);
 
@@ -112,34 +106,27 @@ const App: React.FC = () => {
   const handleFileUpload = async (files: File[]) => {
     if (!state.currentSessionId || files.length === 0) return;
 
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setState(prev => ({ ...prev, isLoading: true, error: null, success: null }));
 
     try {
       // Upload the first file (can be extended for multiple files)
       const file = files[0];
       await uploadFile(file);
 
-      // Add file metadata to the session
-      const fileMetadata = {
-        id: Date.now().toString(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date()
-      };
-
-      const updatedSessions = addFileToSession(state.sessions, state.currentSessionId!, fileMetadata);
+      const updatedSessions = addFileToSession(state.sessions, state.currentSessionId!, file);
       setState(prev => ({
         ...prev,
         sessions: updatedSessions,
-        isLoading: false
+        isLoading: false,
+        success: 'File uploaded successfully'
       }));
     } catch (error) {
       console.error('File upload failed', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'File upload failed'
+        error: error instanceof Error ? error.message : 'File upload failed',
+        success: null
       }));
     }
   };
@@ -158,10 +145,8 @@ const App: React.FC = () => {
       state.sessions,
       state.currentSessionId,
       {
-        id: Date.now().toString(),
         role: 'user',
-        content: message.trim(),
-        timestamp: new Date()
+        content: message.trim()
       }
     );
 
@@ -185,11 +170,9 @@ const App: React.FC = () => {
       const response = await sendQuery(message);
 
       // Add AI response
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const aiMessage: Omit<Message, 'id' | 'timestamp'> = {
         role: 'assistant',
-        content: response.response,
-        timestamp: new Date()
+        content: response.response
       };
 
       const sessionsWithAI = addMessageToSession(
@@ -205,11 +188,9 @@ const App: React.FC = () => {
       }));
     } catch (error) {
       console.error('Query failed', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const errorMessage: Omit<Message, 'id' | 'timestamp'> = {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-        timestamp: new Date()
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
       };
 
       const sessionsWithError = addMessageToSession(
@@ -223,28 +204,6 @@ const App: React.FC = () => {
         sessions: sessionsWithError,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Query failed'
-      }));
-    }
-  };
-    } catch (error) {
-      console.error('Query failed', error);
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date()
-      };
-
-      const sessionsWithError = addMessageToSession(
-        sessionsWithUserMessage,
-        state.currentSessionId,
-        errorMessage
-      );
-
-      setState(prev => ({
-        ...prev,
-        sessions: sessionsWithError,
-        isLoading: false
       }));
     }
   };
@@ -266,6 +225,7 @@ const App: React.FC = () => {
         isFileUploaded={isFileUploaded}
         isLoading={state.isLoading}
         error={state.error}
+        success={state.success}
         onFileUpload={handleFileUpload}
         onSendMessage={handleSendMessage}
       />

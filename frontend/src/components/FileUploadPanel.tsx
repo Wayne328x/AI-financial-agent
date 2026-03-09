@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FileUploadPanelProps } from './types';
 
-const FileUploadPanel = ({ onUpload, isLoading, error }: FileUploadPanelProps) => {
+const FileUploadPanel = ({ onUpload, isLoading, error, success }: FileUploadPanelProps) => {
   const [files, setFiles] = useState<File[]>([]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +26,12 @@ const FileUploadPanel = ({ onUpload, isLoading, error }: FileUploadPanelProps) =
       {error && (
         <div className="error-message">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="success-message">
+          {success}
         </div>
       )}
 
